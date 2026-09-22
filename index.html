@@ -3,7 +3,7 @@
 <head>
     <!-- 
       Arabic Wordle Solver (مساعد حل الووردل العربي)
-      Version: v1.0.0 (Open Source)
+      Version: v1.1.0 (Open Source)
       License: MIT License
       Copyright (c) 2026 Bingi
       
@@ -155,9 +155,9 @@
 
     <!-- Footer -->
     <footer class="mt-8 text-center text-gray-500 text-sm font-medium pb-4">
-        <p>الإصدار v1.0.0 (مفتوح المصدر) <span class="mx-2 text-gray-300">|</span> Powered by <span class="font-bold text-indigo-600">Bingi</span></p>
+        <p>الإصدار v1.1.0 (مفتوح المصدر) <span class="mx-2 text-gray-300">|</span> Powered by <span class="font-bold text-indigo-600">Bingi</span></p>
         <p class="mt-2 text-xs">
-            <a href="https://github.com/iHosam/arabic-wordle-solver/" target="_blank" rel="noopener noreferrer" class="text-indigo-500 hover:text-indigo-700 hover:underline flex justify-center items-center gap-1 transition-colors">
+            <a href="https://github.com/YOUR_USERNAME/YOUR_REPOSITORY_NAME" target="_blank" rel="noopener noreferrer" class="text-indigo-500 hover:text-indigo-700 hover:underline flex justify-center items-center gap-1 transition-colors">
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd"></path></svg>
                 المشروع على GitHub
             </a>
@@ -202,46 +202,21 @@
         async function loadExpansiveDictionary() {
             solveBtn.disabled = true;
             
-            // Try multiple reliable sources for Arabic wordlists to prevent connection/CORS failures
-            const sources = [
-                // 1. jsDelivr CDN (Fastest, avoids GitHub CORS/Rate Limits)
-                'https://cdn.jsdelivr.net/gh/linuxscout/mishkal@master/data/wordlist.txt',
-                // 2. OpenOffice Arabic Dictionary (Huge Hunspell list) via CDN
-                'https://cdn.jsdelivr.net/gh/titoBouzout/Dictionaries@master/Arabic.dic',
-                // 3. Raw GitHub Fallback 1
-                'https://raw.githubusercontent.com/linuxscout/mishkal/master/data/wordlist.txt',
-                // 4. Raw GitHub Fallback 2
-                'https://raw.githubusercontent.com/titoBouzout/Dictionaries/master/Arabic.dic'
-            ];
-
-            let text = null;
-
-            // Try fetching from sources sequentially until one succeeds
-            for (const url of sources) {
-                try {
-                    const response = await fetch(url);
-                    if (response.ok) {
-                        text = await response.text();
-                        console.log(`Successfully loaded expansive dictionary from: ${url}`);
-                        break; // Stop trying if successful
-                    }
-                } catch (e) {
-                    console.warn(`Failed to fetch from ${url}:`, e);
-                }
-            }
-
-            if (text) {
-                try {
-                    // Process the massive text file without blocking the UI too much
+            try {
+                // In v1.1, we fetch the dictionary locally from the same project directory.
+                const response = await fetch('./dictionary.txt');
+                
+                if (response.ok) {
+                    const text = await response.text();
+                    console.log('Successfully loaded local dictionary.txt');
+                    
                     const words = text.split('\n');
                     
                     // Use a slight timeout to allow UI to render loading state
                     await new Promise(resolve => setTimeout(resolve, 50));
 
                     for (let i = 0; i < words.length; i++) {
-                        // Clean up word: 
-                        // 1. Split by '/' to remove Hunspell flags if we used the .dic source
-                        // 2. Remove tashkeel (diacritics), carriage returns, spaces
+                        // Clean up word
                         let cleanWord = words[i].split('/')[0].replace(/[\u064B-\u065F\u0670\r\n\s]/g, '');
                         
                         if (cleanWord.length >= 2 && cleanWord.length <= 10 && arabicRegex.test(cleanWord)) {
@@ -254,16 +229,16 @@
                     loadingIndicator.innerHTML = `
                         <div class="flex items-center gap-3">
                             <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            <span class="text-sm font-bold text-green-800">تم تحميل القاموس الشامل بنجاح</span>
+                            <span class="text-sm font-bold text-green-800">تم تحميل القاموس المحلي بنجاح</span>
                         </div>
                         <span class="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">${wordDictionary.size.toLocaleString()} كلمة</span>
                     `;
                     
-                } catch (error) {
-                    console.error('Error parsing dictionary:', error);
-                    showErrorFallback();
+                } else {
+                    throw new Error('dictionary.txt not found (HTTP ' + response.status + ')');
                 }
-            } else {
+            } catch (error) {
+                console.error('Error loading local dictionary:', error);
                 showErrorFallback();
             }
             
@@ -276,7 +251,7 @@
             loadingIndicator.innerHTML = `
                 <div class="flex items-center gap-3">
                     <svg class="h-5 w-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                    <span class="text-sm font-bold text-yellow-800">حظر المتصفح الاتصال بالقاموس الشامل، تم استخدام القاموس الأساسي.</span>
+                    <span class="text-sm font-bold text-yellow-800">لم يتم العثور على ملف dictionary.txt، تم استخدام القاموس الأساسي.</span>
                 </div>
                 <span class="text-xs font-bold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">${wordDictionary.size.toLocaleString()} كلمة</span>
             `;

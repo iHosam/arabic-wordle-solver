@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <!-- 
+      Arabic Wordle Solver (مساعد حل الووردل العربي)
+      Version: v1.0.0 (Open Source)
+      License: MIT License
+      Copyright (c) 2026 Bingi
+      
+      Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files.
+    -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مساعد حل الووردل العربي (Arabic Wordle Solver)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+        .letter-input {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            transition: all 0.2s ease;
+        }
+        .letter-input:focus {
+            outline: none;
+            transform: scale(1.05);
+        }
+        /* Custom scrollbar for results */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e5e7eb;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #9ca3af;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+        <!-- Header -->
+        <div class="bg-indigo-600 text-white p-6 text-center">
+            <h1 class="text-3xl font-bold mb-2">مساعد حل الووردل العربي</h1>
+            <p class="text-indigo-200">أدخل المعطيات وسنقوم بإيجاد الكلمات المطابقة</p>
+        </div>
+
+        <div class="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Input Section (Left side on LTR, Right side on RTL) -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Word Length Selector -->
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <label for="wordLength" class="block text-sm font-bold text-gray-700 mb-2">عدد حروف الكلمة (2 - 10)</label>
+                    <div class="flex items-center gap-4">
+                        <input type="range" id="wordLength" min="2" max="10" value="5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        <span id="lengthDisplay" class="text-2xl font-bold text-indigo-600 w-12 text-center bg-white rounded-lg shadow-sm py-1 border border-indigo-100">5</span>
+                    </div>
+                </div>
+
+                <!-- Excluded Letters (Gray) -->
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <label for="grayLetters" class="block text-sm font-bold text-gray-700 mb-2">
+                        <span class="inline-block w-3 h-3 rounded-full bg-gray-500 ml-1"></span>
+                        أحرف غير موجودة في الكلمة (رمادي)
+                    </label>
+                    <input type="text" id="grayLetters" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-gray-400 focus:border-gray-400 text-lg shadow-sm" placeholder="مثال: أ ب ت ث...">
+                    <p class="text-xs text-gray-500 mt-2">اكتب جميع الأحرف التي تأكدت من عدم وجودها.</p>
+                </div>
+
+                <!-- Correct Position Letters (Green) -->
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                        <span class="inline-block w-3 h-3 rounded-full bg-green-500 ml-1"></span>
+                        أحرف في مكانها الصحيح (أخضر)
+                    </label>
+                    <div id="greenContainer" class="flex flex-wrap justify-center gap-2 md:gap-3">
+                        <!-- Dynamic inputs will be generated here -->
+                    </div>
+                    <p class="text-xs text-gray-500 mt-3 text-center">أدخل الحرف في الصندوق المطابق لمكانه الصحيح.</p>
+                </div>
+
+                <!-- Wrong Position Letters (Yellow) -->
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                        <span class="inline-block w-3 h-3 rounded-full bg-yellow-400 ml-1"></span>
+                        أحرف في الكلمة ولكن مكانها خطأ (أصفر)
+                    </label>
+                    <div id="yellowContainer" class="flex flex-wrap justify-center gap-2 md:gap-3">
+                        <!-- Dynamic inputs will be generated here -->
+                    </div>
+                    <p class="text-xs text-gray-500 mt-3 text-center">يمكنك إدخال أكثر من حرف في نفس الصندوق إذا جربت عدة أحرف في هذا المكان.</p>
+                </div>
+
+                <!-- Custom Dictionary Extender -->
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <button id="toggleDictBtn" class="text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors">
+                        <span>+ إضافة قاموس مخصص (لزيادة الكلمات)</span>
+                    </button>
+                    <div id="customDictArea" class="hidden mt-3">
+                        <textarea id="customText" rows="3" class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-400 text-sm shadow-sm" placeholder="انسخ والصق أي مقال أو نص عربي هنا. سيقوم التطبيق باستخراج الكلمات منه وإضافتها للبحث..."></textarea>
+                        <button id="processDictBtn" class="mt-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold py-1 px-4 rounded-lg text-sm transition-colors">استخراج وإضافة الكلمات</button>
+                        <p id="dictStatus" class="text-xs text-green-600 mt-1 font-bold hidden"></p>
+                    </div>
+                </div>
+                
+                <!-- Loading Dictionary Indicator -->
+                <div id="loadingIndicator" class="bg-blue-50 p-4 rounded-xl border border-blue-200 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="text-sm font-bold text-blue-800">جاري تحميل القاموس الشامل...</span>
+                    </div>
+                    <span id="dictSizeDisplay" class="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded-full">0 كلمة</span>
+                </div>
+
+            </div>
+
+            <!-- Results Section -->
+            <div class="lg:col-span-1 flex flex-col h-full max-h-[800px]">
+                <div class="bg-gray-50 rounded-xl border border-gray-200 p-4 flex-1 flex flex-col min-h-[350px]">
+                    <div class="flex justify-between items-center mb-4 border-b border-gray-200 pb-2">
+                        <h2 class="text-xl font-bold text-gray-800">النتائج المحتملة</h2>
+                        <span id="resultCount" class="bg-indigo-100 text-indigo-800 text-sm font-bold px-3 py-1 rounded-full">0</span>
+                    </div>
+                    <div id="resultsContainer" class="flex-1 overflow-y-auto pr-1">
+                        <div class="text-center text-gray-500 mt-10">
+                            <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16l2.879-2.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242zM21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <p>أدخل المعطيات واضغط على "ابحث الآن"</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="solveBtn" class="mt-4 w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-xl shadow-lg transform hover:-translate-y-1 transition-all flex justify-center items-center gap-2 text-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    ابحث الآن
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-8 text-center text-gray-500 text-sm font-medium pb-4">
+        <p>الإصدار v1.0.0 (مفتوح المصدر) <span class="mx-2 text-gray-300">|</span> Powered by <span class="font-bold text-indigo-600">Bingi</span></p>
+        <p class="mt-2 text-xs">
+            <a href="https://github.com/YOUR_USERNAME/YOUR_REPOSITORY_NAME" target="_blank" rel="noopener noreferrer" class="text-indigo-500 hover:text-indigo-700 hover:underline flex justify-center items-center gap-1 transition-colors">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd"></path></svg>
+                المشروع على GitHub
+            </a>
+        </p>
+    </footer>
+
+    <script>
+        // State variables
+        let currentLength = 5;
+        
+        // A substantial baseline dictionary of Arabic words (ranging mostly from 3 to 6 letters, heavy on 5)
+        // Stored as a space-separated string for compactness.
+        const baseDictionaryStr = "أبواب أحمد أحمر أخبار أستاذ أسماء أشجار أطفال أعمال أفلام أفكار أقلام أكواب ألعاب ألوان أموال أندلس أنهار أهداف أوراق أيام باب بحر بيت تاج ثلج جبل جسر حجر حبس حديقة حديد حرية حصان حليب حوت خبز خريطة خشب خضار خلايا خيل دار دخان درس دفتر دموع ذهب ذئب رأس رجل رماد رياح زجاج زرع زهرة ساعة سحاب سرير سكر سلام سماء سيف شاي شجرة شمس صبار صحراء صخرة صديق صقر صلاة صورة ضوء طائرة طبيعة طريق طعام طفل طير ظل ظلام عادة عالم عائلة عسل عشب عصر عصفور عقل علم عين غابة غبار غراب غزال غيوم فأس فأر فجر فراشة فكر قارب قلب قمر قهوة كتاب كرسي كلب كلام كوكب ليل ماء مجد مدرسة مدينة مرآة مسجد مطر مكتب مكتبة ملح ملك منزل موز مياه نار نبتة نجمة نخلة نسر نصف نملة نهار نهر نور هواء هلال وردة ورقة وطن وقت ولد يد يمين يسار يعسوب ياقوت يوسف تفاحة برتقال ليمونة بطيخة فراولة سيارة شاحنة حافلة قطار دراجة سفينة طيارة صاروخ قراءة كتابة حساب هندسة كيمياء فيزياء تاريخ جغرافيا اقتصاد سياسة زراعة صناعة تجارة سياحة ثقافة رياضة سباحة رماية فروسية ملاكمة مصارعة طائرة سلة قدم يد طاولة تنس شطرنج مسرح سينما تلفاز مذياع هاتف حاسوب شاشة لوحة فأرة قرص برنامج تطبيق موقع شبكة إنترنت رسالة بريد مقال قصة رواية قصيدة ديوان جريدة مجلة صحيفة خبر تقرير بحث دراسة سؤال جواب مشكلة حل نتيجة سبب دليل برهان حقيقة خيال وهم حلم فكرة رأي موقف قرار خطة مشروع هدف غاية وسيلة طريق مسار اتجاه يمين يسار أمام خلف فوق تحت بين داخل خارج حول قبل بعد مع ضد في من إلى على عن حتى كأن لكن إن أن هل كيف متى أين كم من ما ماذا لماذا أي نعم لا بلى كلا أحيانا دائما أبدا غالبا نادرا قريبا بعيدا هنا هناك هكذا هلم هيا هات تعال اذهب اقرأ اكتب اجلس قف نم استيقظ كل اشرب العب ادرس اعمل سافر ارجع اضحك ابك افرح احزن اغضب ارض ارفض اقبل ارفض نجاح فشل فوز خسارة ربح نصر هزيمة تقدم تأخر تطور تراجع زيادة نقصان كثرة قلة وجود عدم حياة موت بداية نهاية أول آخر سابق لاحق ماضي حاضر مستقبل قديم جديد حديث معاصر أصيل دخيل غريب قريب بعيد صديق عدو حبيب كاره مسلم كافر مؤمن منافق صالح فاسد صادق كاذب أمين خائن شجاع جبان كريم بخيل غني فقير قوي ضعيف صحيح مريض سليم معافى جميل قبيح حسن سيء خير شر حق باطل عدل ظلم نور ظلام هدى ضلال علم جهل حلم غضب صبر جزع شكر كفر ذكر نسيان طاعة معصية توبة ذنب مغفرة رحمة عذاب جنة نار سماء أرض شمس قمر كوكب نجم سحاب مطر رعد برق ريح هواء ماء تراب نار خشب حديد ذهب فضة نحاس رصاص زجاج حجر رمل طين جبل تل وادي نهر بحر محيط بحيرة بركة بئر عين شجرة نخلة عشب زهرة ثمرة ورقة غصن جذر جذع قشر خشب حيوان إنسان طير سمك حشرة بهيمة وحش أسد نمر فهد ذئب ثعلب دب فيل زرافة قرد غزال أرنب كلب قط فأر ثعبان عقرب نملة نحلة ذبابة بعوضة عنكبوت حمامة غراب نسر صقر بومة دجاجة ديك بطة إوزة نعامة بيضة لحم عظم دم جلد شعر صوف ريش قرن حافر مخلب ناب فم أنف عين أذن رأس وجه عنق صدر بطن ظهر يد رجل قدم أصبع ظفر قلب كبد رئة معدة أمعاء عصب دم عرق لحم شحم جلد عظم مخ عقل روح نفس جسد جسم شكل لون حجم وزن طول عرض ارتفاع عمق مساحة محيط دائرة مربع مثلث مستطيل خط نقطة زاوية جهة مكان زمان يوم ليلة أسبوع شهر سنة قرن لحظة دقيقة ساعة فصل ربيع صيف خريف شتاء حر برد دفء رطوبة جفاف نور ظلام لون أبيض أسود أحمر أخضر أزرق أصفر بني رمادي وردي بنفسجي برتقالي ذهبي فضي خافت ساطع لامع باهت قاتم فاتح صاف كدر حلو مر حامض مالح حار بارد فاتر دافئ جاف رطب صلب رخو لين قاسي خشن ناعم ثقيل خفيف كبير صغير عظيم حقير طويل قصير عريض ضيق سميك رقيق عميق سطحي مرتفع منخفض غالي رخيص كثير قليل كل بعض جزء نصف ثلث ربع خمس سدس سبع ثمن تسع عشر مئة ألف مليون بليون صفر واحد اثنان ثلاثة أربعة خمسة ستة سبعة ثمانية تسعة عشرة";
+        
+        // Set to ensure unique words and fast lookup
+        let wordDictionary = new Set(baseDictionaryStr.split(' '));
+
+        // DOM Elements
+        const wordLengthInput = document.getElementById('wordLength');
+        const lengthDisplay = document.getElementById('lengthDisplay');
+        const grayLettersInput = document.getElementById('grayLetters');
+        const greenContainer = document.getElementById('greenContainer');
+        const yellowContainer = document.getElementById('yellowContainer');
+        const solveBtn = document.getElementById('solveBtn');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const resultCount = document.getElementById('resultCount');
+        
+        // Custom Dict Elements
+        const toggleDictBtn = document.getElementById('toggleDictBtn');
+        const customDictArea = document.getElementById('customDictArea');
+        const customText = document.getElementById('customText');
+        const processDictBtn = document.getElementById('processDictBtn');
+        const dictStatus = document.getElementById('dictStatus');
+
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const dictSizeDisplay = document.getElementById('dictSizeDisplay');
+
+        // Arabic letters regex (including different forms of Alef, Hamza, etc.)
+        const arabicRegex = /^[\u0621-\u064A\u0660-\u0669]+$/;
+
+        // Fetch expansive dictionary on load
+        async function loadExpansiveDictionary() {
+            solveBtn.disabled = true;
+            
+            // Try multiple reliable sources for Arabic wordlists to prevent connection/CORS failures
+            const sources = [
+                // 1. jsDelivr CDN (Fastest, avoids GitHub CORS/Rate Limits)
+                'https://cdn.jsdelivr.net/gh/linuxscout/mishkal@master/data/wordlist.txt',
+                // 2. OpenOffice Arabic Dictionary (Huge Hunspell list) via CDN
+                'https://cdn.jsdelivr.net/gh/titoBouzout/Dictionaries@master/Arabic.dic',
+                // 3. Raw GitHub Fallback 1
+                'https://raw.githubusercontent.com/linuxscout/mishkal/master/data/wordlist.txt',
+                // 4. Raw GitHub Fallback 2
+                'https://raw.githubusercontent.com/titoBouzout/Dictionaries/master/Arabic.dic'
+            ];
+
+            let text = null;
+
+            // Try fetching from sources sequentially until one succeeds
+            for (const url of sources) {
+                try {
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        text = await response.text();
+                        console.log(`Successfully loaded expansive dictionary from: ${url}`);
+                        break; // Stop trying if successful
+                    }
+                } catch (e) {
+                    console.warn(`Failed to fetch from ${url}:`, e);
+                }
+            }
+
+            if (text) {
+                try {
+                    // Process the massive text file without blocking the UI too much
+                    const words = text.split('\n');
+                    
+                    // Use a slight timeout to allow UI to render loading state
+                    await new Promise(resolve => setTimeout(resolve, 50));
+
+                    for (let i = 0; i < words.length; i++) {
+                        // Clean up word: 
+                        // 1. Split by '/' to remove Hunspell flags if we used the .dic source
+                        // 2. Remove tashkeel (diacritics), carriage returns, spaces
+                        let cleanWord = words[i].split('/')[0].replace(/[\u064B-\u065F\u0670\r\n\s]/g, '');
+                        
+                        if (cleanWord.length >= 2 && cleanWord.length <= 10 && arabicRegex.test(cleanWord)) {
+                            wordDictionary.add(cleanWord);
+                        }
+                    }
+
+                    loadingIndicator.classList.replace('bg-blue-50', 'bg-green-50');
+                    loadingIndicator.classList.replace('border-blue-200', 'border-green-200');
+                    loadingIndicator.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            <span class="text-sm font-bold text-green-800">تم تحميل القاموس الشامل بنجاح</span>
+                        </div>
+                        <span class="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded-full">${wordDictionary.size.toLocaleString()} كلمة</span>
+                    `;
+                    
+                } catch (error) {
+                    console.error('Error parsing dictionary:', error);
+                    showErrorFallback();
+                }
+            } else {
+                showErrorFallback();
+            }
+            
+            solveBtn.disabled = false;
+        }
+
+        function showErrorFallback() {
+            loadingIndicator.classList.replace('bg-blue-50', 'bg-yellow-50');
+            loadingIndicator.classList.replace('border-blue-200', 'border-yellow-200');
+            loadingIndicator.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <svg class="h-5 w-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    <span class="text-sm font-bold text-yellow-800">حظر المتصفح الاتصال بالقاموس الشامل، تم استخدام القاموس الأساسي.</span>
+                </div>
+                <span class="text-xs font-bold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">${wordDictionary.size.toLocaleString()} كلمة</span>
+            `;
+        }
+
+        // Initialize dynamic inputs
+        function renderInputs(length) {
+            greenContainer.innerHTML = '';
+            yellowContainer.innerHTML = '';
+            
+            for (let i = 0; i < length; i++) {
+                // Since the document is dir="rtl", normal flex places box 0 on the right (first letter)
+                
+                // Green Inputs
+                const greenBox = document.createElement('input');
+                greenBox.type = 'text';
+                greenBox.maxLength = 1;
+                greenBox.dataset.index = i;
+                greenBox.className = 'letter-input w-10 h-10 md:w-12 md:h-12 border-2 border-green-300 focus:border-green-500 rounded-lg bg-green-50 text-green-800 shadow-inner';
+                greenBox.placeholder = '?';
+                
+                // Allow moving to next input automatically
+                greenBox.addEventListener('input', function(e) {
+                    if (this.value && i < length - 1) {
+                        const next = greenContainer.querySelector(`[data-index="${i+1}"]`);
+                        if(next) next.focus();
+                    }
+                });
+                
+                greenContainer.appendChild(greenBox);
+
+                // Yellow Inputs (Can take multiple letters)
+                const yellowBox = document.createElement('input');
+                yellowBox.type = 'text';
+                yellowBox.dataset.index = i;
+                yellowBox.className = 'letter-input w-10 h-10 md:w-12 md:h-12 border-2 border-yellow-300 focus:border-yellow-500 rounded-lg bg-yellow-50 text-yellow-800 shadow-inner text-sm md:text-base';
+                yellowBox.placeholder = '?';
+                yellowContainer.appendChild(yellowBox);
+            }
+        }
+
+        // Event Listeners
+        wordLengthInput.addEventListener('input', (e) => {
+            currentLength = parseInt(e.target.value);
+            lengthDisplay.textContent = currentLength;
+            renderInputs(currentLength);
+        });
+
+        toggleDictBtn.addEventListener('click', () => {
+            customDictArea.classList.toggle('hidden');
+        });
+
+        processDictBtn.addEventListener('click', () => {
+            const text = customText.value;
+            if (!text.trim()) return;
+            
+            // Extract all Arabic words
+            const words = text.match(/[\u0621-\u064A]+/g) || [];
+            let added = 0;
+            words.forEach(word => {
+                // Basic normalization (optional: remove tashkeel if present)
+                if (word.length >= 2 && word.length <= 10) {
+                    if (!wordDictionary.has(word)) {
+                        wordDictionary.add(word);
+                        added++;
+                    }
+                }
+            });
+            
+            dictStatus.textContent = `تم إضافة ${added} كلمة جديدة بنجاح! إجمالي الكلمات الآن: ${wordDictionary.size}`;
+            dictStatus.classList.remove('hidden');
+            customText.value = '';
+        });
+
+        // Solving Logic
+        solveBtn.addEventListener('click', () => {
+            // 1. Gather inputs - using safer regex matching for Arabic letters only
+            const grayStr = grayLettersInput.value;
+            const grayLetters = new Set(grayStr.match(/[\u0621-\u064A]/g) || []);
+            
+            const greenInputs = Array.from(greenContainer.querySelectorAll('input')).map(inp => {
+                const match = inp.value.match(/[\u0621-\u064A]/);
+                return match ? match[0] : '';
+            });
+            const yellowInputs = Array.from(yellowContainer.querySelectorAll('input')).map(inp => {
+                return inp.value.match(/[\u0621-\u064A]/g) || [];
+            });
+
+            // 2. Filter dictionary
+            let results = [];
+            
+            for (const word of wordDictionary) {
+                // Must match the exact length
+                if (word.length !== currentLength) continue;
+
+                let isValid = true;
+                
+                // Track characters required by yellow and green to handle grays accurately
+                let requiredChars = new Set();
+                
+                // Check Green (Exact Match)
+                for (let i = 0; i < currentLength; i++) {
+                    if (greenInputs[i] && word[i] !== greenInputs[i]) {
+                        isValid = false;
+                        break;
+                    }
+                    if (greenInputs[i]) requiredChars.add(greenInputs[i]);
+                }
+                if (!isValid) continue;
+
+                // Check Yellow (Wrong position, but must exist in word)
+                for (let i = 0; i < currentLength; i++) {
+                    for (const char of yellowInputs[i]) {
+                        requiredChars.add(char);
+                        // Cannot be in this exact position
+                        if (word[i] === char) {
+                            isValid = false;
+                            break;
+                        }
+                        // Must be in the word somewhere
+                        if (!word.includes(char)) {
+                            isValid = false;
+                            break;
+                        }
+                    }
+                    if (!isValid) break;
+                }
+                if (!isValid) continue;
+
+                // Check Gray (Excluded)
+                // Rule: If a letter is gray, it cannot appear in the word EXCEPT 
+                // in the positions where it is explicitly green or yellow (handling duplicates).
+                for (const char of grayLetters) {
+                    if (requiredChars.has(char)) {
+                        // Advanced Wordle Logic for duplicates: 
+                        // If it's required (green/yellow) AND gray, it means it doesn't appear MORE times than required.
+                        // For a simple solver, we will just count occurrences.
+                        let requiredCount = 0;
+                        for(let i=0; i<currentLength; i++){
+                            if(greenInputs[i] === char) requiredCount++;
+                            if(yellowInputs[i].includes(char)) requiredCount++; 
+                            // Note: yellow counting is tricky, but we approximate.
+                        }
+                        
+                        let actualCount = word.split(char).length - 1;
+                        if (actualCount > requiredCount) {
+                            isValid = false;
+                            break;
+                        }
+                    } else {
+                        // Strict exclusion: Not required at all, so must not be in word
+                        if (word.includes(char)) {
+                            isValid = false;
+                            break;
+                        }
+                    }
+                }
+                
+                if (isValid) {
+                    results.push(word);
+                }
+            }
+
+            // 3. Display Results
+            resultsContainer.innerHTML = '';
+            resultCount.textContent = results.length;
+
+            if (results.length === 0) {
+                resultsContainer.innerHTML = `
+                    <div class="text-center text-gray-500 mt-10">
+                        <svg class="w-16 h-16 mx-auto mb-4 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <p class="font-bold">لم نجد أي كلمة مطابقة!</p>
+                        <p class="text-sm mt-2">تأكد من المعطيات، أو جرب إضافة نص كبير لقاموس الكلمات المخصص.</p>
+                    </div>`;
+                return;
+            }
+
+            // Sort alphabetically
+            results.sort();
+
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-2 sm:grid-cols-3 gap-2';
+            
+            results.forEach(word => {
+                const badge = document.createElement('div');
+                badge.className = 'bg-white border-2 border-indigo-100 text-indigo-900 font-bold text-center py-2 rounded-lg shadow-sm hover:bg-indigo-50 transition-colors cursor-default text-lg';
+                badge.textContent = word;
+                grid.appendChild(badge);
+            });
+            
+            resultsContainer.appendChild(grid);
+        });
+
+        // Initialize on load
+        renderInputs(currentLength);
+        
+        // Start fetching the big dictionary immediately
+        dictSizeDisplay.textContent = `${wordDictionary.size.toLocaleString()} كلمة`;
+        loadExpansiveDictionary();
+
+    </script>
+</body>
+</html>
